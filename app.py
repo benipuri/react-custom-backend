@@ -13,14 +13,8 @@ from PIL import Image
 from simple_lama_inpainting import SimpleLama
 from segment_anything import sam_model_registry, SamPredictor
 
-# ============================================================
-# FASTAPI APP + CORS (for React frontend later)
-# ============================================================
-app = FastAPI(title="Sticker Remover – Points/Boxes Version")
+app = FastAPI()
 
-# ============================================================
-# MODEL SETUP (SAM + LaMa)
-# ============================================================
 DEVICE = "cuda" if (os.environ.get("USE_CUDA", "1") == "1" and
                     hasattr(__import__("torch"), "cuda") and
                     __import__("torch").cuda.is_available()) else "cpu"
