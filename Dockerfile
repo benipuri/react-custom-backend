@@ -15,7 +15,6 @@ RUN pip install --upgrade pip && \
 
 # Copy your code and small model
 COPY app.py .
-COPY remove_sam_lama_fast.py .
 
 # Download official SAM ViT-B checkpoint (~300 MB) — this runs every build (15 seconds)
 RUN wget -O sam_vit_b_01ec64.pth \
