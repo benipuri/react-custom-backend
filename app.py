@@ -18,14 +18,6 @@ from segment_anything import sam_model_registry, SamPredictor
 # ============================================================
 app = FastAPI(title="Sticker Remover – Points/Boxes Version")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],          # you can later restrict to your Hostinger domain
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # ============================================================
 # MODEL SETUP (SAM + LaMa)
 # ============================================================
@@ -174,6 +166,54 @@ def ping():
 @app.get("/")
 def home():
     return {"message": "Sticker Remover API (points/boxes) ready"}
+
+@app.post("/preview")
+async def preview_image(
+    file: UploadFile = File(...),
+    points: str = Form("[]"),
+    boxes: str = Form("[]"),
+    dilate_px: int = Form(7)
+):
+    img_bytes = await file.read()
+    img = load_rgb_bytes(img_bytes)
+
+    predictor.set_image(img)
+    pts = json.loads(points)
+    bxs = json.loads(boxes)
+
+    mask_total = np.zeros(img.shape[:2], dtype=np.uint8)
+
+    # points
+    for p in pts:
+        x, y = p["x"], p["y"]
+        masks, scores, _ = predictor.predict(
+            point_coords=np.array([[x, y]], dtype=np.float32),
+            point_labels=np.array([1], dtype=np.int32),
+            multimask_output=True,
+        )
+        mask_total = np.logical_or(mask_total, masks[np.argmax(scores)])
+
+    # boxes
+    for b in bxs:
+        box = np.array([b["x1"], b["y1"], b["x2"], b["y2"]], dtype=np.float32)
+        masks, scores, _ = predictor.predict(
+            box=box[None, :],
+            multimask_output=True,
+        )
+        mask_total = np.logical_or(mask_total, masks[np.argmax(scores)])
+
+    mask_total = (mask_total.astype(np.uint8) * 255)
+    if dilate_px > 0:
+        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilate_px, dilate_px))
+        mask_total = cv2.dilate(mask_total, k, iterations=1)
+
+    overlay = img.copy()
+    green = np.zeros_like(img)
+    green[..., 1] = 255
+    mask_bool = mask_total > 0
+    overlay[mask_bool] = (0.6 * overlay[mask_bool] + 0.4 * green[mask_bool]).astype(np.uint8)
+
+    return {"image_b64": to_base64(overlay)}
 
 
 # ============================================================
