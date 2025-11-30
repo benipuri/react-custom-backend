@@ -40,6 +40,11 @@ print("✅ Models loaded and ready.")
 # ============================================================
 # HELPER FUNCTIONS
 # ============================================================
+def to_base64(img: np.ndarray):
+    buf = io.BytesIO()
+    Image.fromarray(img.astype(np.uint8)).save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
 def load_rgb_bytes(data: bytes) -> np.ndarray:
     """Load image bytes as RGB numpy array."""
     img = Image.open(io.BytesIO(data)).convert("RGB")
